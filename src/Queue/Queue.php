@@ -56,7 +56,9 @@ class Queue extends QueueBase implements ReliableQueueInterface {
       $channel = $this->getChannel();
       // Data must be a string.
       $item = new AMQPMessage(serialize($data), ['delivery_mode' => 2]);
-      $channel->basic_publish($item, '', $this->name);
+      $exchange = 'dasp';
+      $routing_key = 'dasp.test';
+      $channel->basic_publish($item, $exchange, $routing_key);
       $this->logger->info('Item sent to queue %queue', $logger_args);
       $result = TRUE;
     }

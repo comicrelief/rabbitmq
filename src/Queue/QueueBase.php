@@ -113,6 +113,12 @@ abstract class QueueBase {
       'nowait' => 'FALSE',
       'arguments' => NULL,
       'ticket' => NULL,
+      'bindings' => [
+        [
+          'exchange' => 'dasp',
+          'routing_key' => 'dasp.test',
+        ],
+      ],
     ];
 
     $queue_info = $this->modules->invokeAll('rabbitmq_queue_info');
@@ -126,9 +132,32 @@ abstract class QueueBase {
     // The name option cannot be overridden.
     $queue_options['name'] = $this->name;
 
-    return $channel->queue_declare($this->name,
+    $exchange = [
+      "name" => 'dasp',
+      "type" => 'direct',
+      "passive" => false,
+      "durable" => true,
+      "auto_delete" => false,
+      "internal" => false,
+      "nowait" => false,
+    ];
+
+    $channel->exchange_declare($exchange['name'], $exchange['type'],
+              $exchange['passive'], $exchange['durable'],
+              $exchange['auto_delete'], $exchange['internal'],
+              $exchange['nowait']);
+
+    $channel->queue_declare($this->name,
       $queue_options['passive'], $queue_options['durable'],
       $queue_options['exclusive'], $queue_options['auto_delete']);
+
+    // Bind queues to an exchange if defined
+    if (!empty($queue_options['bindings'])) {
+      foreach ($queue_options['bindings'] as $binding) {
+        $this->channel->queue_bind($this->name, $binding['exchange'], $binding['routing_key']);
+      }
+    }
+
   }
 
 }
