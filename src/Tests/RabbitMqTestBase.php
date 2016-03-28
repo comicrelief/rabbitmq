@@ -7,7 +7,7 @@
 
 namespace Drupal\rabbitmq\Tests;
 
-use Doctrine\Common\Util\Debug;
+use Drupal\Core\Site\Settings;
 use Drupal\rabbitmq\Queue\QueueFactory;
 use Drupal\rabbitmq\Connection;
 use Drupal\KernelTests\KernelTestBase;
@@ -16,7 +16,7 @@ use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Exception\AMQPRuntimeException;
 
 /**
- * Class BeanstalkdTestBase is a base class for Beanstalkd tests.
+ * Class RabbitMqTestBase is a base class for RabbitMqTest tests.
  */
 abstract class RabbitMqTestBase extends KernelTestBase {
 
@@ -34,9 +34,11 @@ abstract class RabbitMqTestBase extends KernelTestBase {
    */
   public function setUp() {
     parent::setUp();
-    // Override the database queue to ensure all requests to it come to us.
-    $this->container->setAlias('queue.database', QueueFactory::DEFAULT_QUEUE_NAME);
-    $this->connectionFactory = $this->container->get('rabbitmq.connection.factory');
+    // Override the database queue to ensure all requests to it come to the rabbitmq.
+    $this->container->setAlias('queue.database', 'queue.rabbitmq');
+
+    // Mock our connection object
+    $this->connectionFactory = $this->prepareConnection();
   }
 
   /**
@@ -56,22 +58,58 @@ abstract class RabbitMqTestBase extends KernelTestBase {
     $exclusive = FALSE;
     $auto_delete = FALSE;
 
-    list($actual_name,,) = $channel->queue_declare($name, $passive, $durable, $exclusive, $auto_delete);
-    $this->assertEquals($name, $actual_name, 'Queue declaration succeeded');
+    // There is no point in declaring queues since we'd do this on a mock object
+    // list($actual_name,,) = $channel->queue_declare($name, $passive, $durable, $exclusive, $auto_delete);
+    // $this->assertEquals($name, $actual_name, 'Queue declaration succeeded');
 
     return $channel;
   }
 
   /**
-   * Clean up after a test.
+   * Mock the connection
    *
-   * @param \PhpAmqpLib\Channel\AMQPChannel $channel
-   *   The channel to clean up.
+   * @return \PHPUnit_Framework_MockObject_MockObject
    */
-  protected function cleanUp(AMQPChannel $channel) {
-    $connection = $channel->getConnection();
-    $channel->close();
-    $connection->close();
+  protected function prepareConnection()
+  {
+    $amqpConnection = $this->prepareAMQPConnection();
+    $amqpChannel = $this->prepareAMQPChannel();
+
+    $amqpConnection->expects($this->any())
+        ->method('channel')
+        ->will($this->returnValue($amqpChannel));
+
+    $connection = $this->getMockBuilder('\Drupal\rabbitmq\Connection')
+        ->disableOriginalConstructor()
+        ->getMock();
+
+    $connection->expects($this->any())
+        ->method('getConnection')
+        ->will($this->returnValue($amqpConnection));
+
+    return $connection;
+  }
+
+  /**
+   * Mock AMQPConnection
+   *
+   * @return \PHPUnit_Framework_MockObject_MockObject
+   */
+  protected function prepareAMQPConnection() {
+    return $this->getMockBuilder('\PhpAmqpLib\Connection\AMQPConnection')
+        ->disableOriginalConstructor()
+        ->getMock();
+  }
+
+  /**
+   * Mock AMQPChannel
+   *
+   * @return \PHPUnit_Framework_MockObject_MockObject
+   */
+  protected function prepareAMQPChannel() {
+    return $this->getMockBuilder('\PhpAmqpLib\Channel\AMQPChannel')
+        ->disableOriginalConstructor()
+        ->getMock();
   }
 
 }
