@@ -70,16 +70,16 @@ class Connection {
          'password' => static::DEFAULT_PASS,
          'vhost' => '/',
        ];
-       $config_credentials = Settings::get('rabbitmq_credentials');
-       $credentials = !empty($config_credentials) ? $config_credentials : $default_credentials;
-
-       $connection = new AMQPStreamConnection(
-         $credentials['host'],
-         $credentials['port'], $credentials['username'],
-         $credentials['password'], $credentials['vhost']
-       );
-       self::$connection = $connection;
      }
+     $config_credentials = Settings::get('rabbitmq_credentials');
+     $credentials = !empty($config_credentials) ? $config_credentials : $default_credentials;
+
+     $connection = new AMQPStreamConnection(
+       $credentials['host'],
+       $credentials['port'], $credentials['username'],
+       $credentials['password'], $credentials['vhost']
+     );
+     self::$connection = $connection;
      return self::$connection;
    }
 }
