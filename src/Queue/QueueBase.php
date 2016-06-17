@@ -11,15 +11,12 @@ use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\rabbitmq\Connection;
 use PhpAmqpLib\Channel\AMQPChannel;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\DependencyInjection\ContainerAwareInterface;
-use Symfony\Component\DependencyInjection\ContainerAwareTrait;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 
 /**
  * Class QueueBase.
  */
-abstract class QueueBase implements ContainerAwareInterface {
-  use ContainerAwareTrait;
+abstract class QueueBase {
 
   const LOGGER_CHANNEL = 'rabbitmq';
 
