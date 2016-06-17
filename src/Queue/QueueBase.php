@@ -11,11 +11,15 @@ use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\rabbitmq\Connection;
 use PhpAmqpLib\Channel\AMQPChannel;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\ContainerAwareInterface;
+use Symfony\Component\DependencyInjection\ContainerAwareTrait;
+use Drupal\Core\DependencyInjection\ContainerBuilder;
 
 /**
  * Class QueueBase.
  */
-abstract class QueueBase {
+abstract class QueueBase implements ContainerAwareInterface {
+  use ContainerAwareTrait;
 
   const LOGGER_CHANNEL = 'rabbitmq';
 
@@ -58,6 +62,16 @@ abstract class QueueBase {
   protected $options;
 
   /**
+   * The exchange channels.
+   */
+  protected $exchanges;
+
+  /**
+   * The queue channels.
+   */
+  protected $queues;
+
+  /**
    * Constructor.
    *
    * @param string $name
@@ -70,10 +84,11 @@ abstract class QueueBase {
    *   The logger service.
    */
   public function __construct($name, Connection $connection,
-    ModuleHandlerInterface $modules, LoggerInterface $logger) {
+                              ModuleHandlerInterface $modules,
+                              LoggerInterface $logger) {
     // Check our active storage to find the the queue config.
-    $config = \Drupal::config('rabbitmq.config');
-    $queues = $config->get('queues');
+    $queues = $this->queues[$name];
+    $exchanges = $this->exchanges;
 
     $this->options = ['name' => $name];
     if (isset($queues[$name])) {
@@ -85,7 +100,7 @@ abstract class QueueBase {
     $this->logger = $logger;
     $this->modules = $modules;
     // Declare any exchanges required if configured.
-    $exchanges = $config->get('exchanges');
+
     if ($exchanges) {
       foreach ($exchanges as $name => $exchange) {
         $this->connection->getConnection()->channel()->exchange_declare(
@@ -152,6 +167,14 @@ abstract class QueueBase {
     }
 
     return $queue;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function alter(ContainerBuilder $container) {
+    $this->queues = $container->getParameter('rabbitmq.queues');
+    $this->exchanges = $container->getParameter('rabbitmq.exchanges');
   }
 
 }
